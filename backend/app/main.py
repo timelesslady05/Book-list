@@ -1,6 +1,7 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 from app.database import Base, add_new_book_columns, engine
 from app.models import Book

@@ -25,10 +25,9 @@ services:
       - key: FRONTEND_ORIGIN
         value: https://bookloom-frontend.onrender.com
 
-  - type: static
+  - type: web
     name: bookloom-frontend
     runtime: static
-    region: oregon
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
