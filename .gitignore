@@ -1,0 +1,17 @@
+# Local environment settings and secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node.js
+node_modules/
+dist/
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
