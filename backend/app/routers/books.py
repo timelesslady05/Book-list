@@ -6,9 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Book
+from app.routers.auth import require_authenticated
 from app.schemas import BookCreate, BookResponse, BookUpdate
 
-router = APIRouter(prefix="/api/books", tags=["Books"])
+router = APIRouter(
+    prefix="/api/books",
+    tags=["Books"],
+    dependencies=[Depends(require_authenticated)],
+)
 
 
 @router.get("", response_model=list[BookResponse])

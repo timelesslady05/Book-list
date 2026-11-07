@@ -4,6 +4,16 @@ const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8001").replac
   /\/$/,
   "",
 );
+const AUTH_REQUIRED_EVENT = "bookloom:authentication-required";
+
+async function apiFetch(url, options = {}) {
+  const response = await fetch(url, { ...options, credentials: "include" });
+  if (response.status === 401) {
+    window.dispatchEvent(new Event(AUTH_REQUIRED_EVENT));
+  }
+  return response;
+}
+
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "dashboard" },
   { id: "books", label: "My Books", icon: "book" },
@@ -60,6 +70,7 @@ function Icon({ name, size = 20 }) {
     moon: <><path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z" /></>,
     arrow: <><path d="M7 17 17 7M7 7h10v10" /></>,
     sparkle: <><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-2-5.8L4 11l6-2.2zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" /></>,
+    logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></>,
   };
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -97,6 +108,41 @@ function BrandMark() {
       />
       <circle cx="20" cy="31.7" r="1.5" fill="#e4bd7a" />
     </svg>
+  );
+}
+
+function LoginScreen({ password, setPassword, onSubmit, error, loading, darkMode }) {
+  return (
+    <main className={`auth-page${darkMode ? " dark-theme" : ""}`}>
+      <section aria-labelledby="login-title" className="auth-card">
+        <div className="auth-brand">
+          <span className="brand-icon"><BrandMark /></span>
+          <span className="brand-word">Book<span className="brand-light">Loom</span></span>
+        </div>
+        <span className="eyebrow"><span className="eyebrow-line" /> YOUR READING CORNER</span>
+        <h1 id="login-title">A little space for your stories.</h1>
+        <p>Enter your owner password to open your private library.</p>
+        <form className="auth-form" onSubmit={onSubmit}>
+          <label htmlFor="owner-password">Owner password</label>
+          <input
+            autoComplete="current-password"
+            autoFocus
+            id="owner-password"
+            maxLength={128}
+            minLength={12}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            type="password"
+            value={password}
+          />
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="primary-button" disabled={loading} type="submit">
+            {loading ? "Signing in..." : "Open my library"}
+          </button>
+        </form>
+        <span className="auth-footnote">One shared password protects this personal library.</span>
+      </section>
+    </main>
   );
 }
 
@@ -203,7 +249,7 @@ function BookForm({ book, onSave, onCancel, pageMode = false }) {
   const applyCatalogBook = useCallback(async (suggestion, signal, requestVersion) => {
     setLookup({ status: "loading_details", matches: [] });
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_URL}/api/catalog/books/lookup/work?work_id=${encodeURIComponent(suggestion.work_id)}`,
         { signal },
       );
@@ -272,7 +318,7 @@ function BookForm({ book, onSave, onCancel, pageMode = false }) {
       setLookup({ status: "searching", matches: [] });
       try {
         const query = new URLSearchParams({ title, author });
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_URL}/api/catalog/books/lookup?${query}`,
           { signal: controller.signal },
         );
@@ -599,13 +645,17 @@ function ProfileSettings({ profile, setProfile, darkMode, setDarkMode, completed
         <div className="goal-progress"><div><span>THIS YEAR’S READING GOAL</span><strong>{completed.length} / {profile.yearlyGoal || 24} books</strong></div><div className="progress-track progress-track-large"><span style={{ width: `${Math.min(100, completed.length / (profile.yearlyGoal || 24) * 100)}%` }} /></div></div>
         <div className="settings-save"><span aria-live="polite">{saved ? "Preferences saved." : "Profile preferences stay on this device."}</span><button className="primary-button" type="submit">Save preferences</button></div>
       </form>
-      <p className="settings-note">This project is a personal library for one reader. Accounts, sign-in, and shared profiles are not enabled.</p>
+      <p className="settings-note">This is one shared personal library protected by an owner password. Profile preferences stay in this browser.</p>
     </section>
   );
 }
 
 export default function App() {
   const [books, setBooks] = useState([]);
+  const [authStatus, setAuthStatus] = useState("checking");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
   const [page, setPage] = useState("dashboard");
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("all");
@@ -623,11 +673,36 @@ export default function App() {
     }
   });
 
+  const checkSession = useCallback(async () => {
+    setAuthStatus("checking");
+    try {
+      const response = await fetch(`${API_URL}/api/auth/session`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("The sign-in service could not be reached.");
+      const session = await response.json();
+      setAuthStatus(session.authenticated ? "authenticated" : "unauthenticated");
+    } catch {
+      setAuthStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    function handleAuthenticationRequired() {
+      setAuthStatus("unauthenticated");
+      setBooks([]);
+      setError("");
+    }
+    window.addEventListener(AUTH_REQUIRED_EVENT, handleAuthenticationRequired);
+    checkSession();
+    return () => window.removeEventListener(AUTH_REQUIRED_EVENT, handleAuthenticationRequired);
+  }, [checkSession]);
+
   const loadBooks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/api/books`);
+      const response = await apiFetch(`${API_URL}/api/books`);
       if (!response.ok) throw new Error("The book list could not be loaded.");
       setBooks(await response.json());
     } catch {
@@ -637,7 +712,9 @@ export default function App() {
     }
   }, []);
 
-  useEffect(() => { loadBooks(); }, [loadBooks]);
+  useEffect(() => {
+    if (authStatus === "authenticated") loadBooks();
+  }, [authStatus, loadBooks]);
   useEffect(() => {
     localStorage.setItem("booknook-dark", String(darkMode));
     document.documentElement.dataset.theme = darkMode ? "dark" : "light";
@@ -648,8 +725,47 @@ export default function App() {
   const favorites = sortedBooks.filter((book) => book.is_favorite);
   const completed = sortedBooks.filter((book) => book.status === "completed");
 
+  async function signIn(event) {
+    event.preventDefault();
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ password: loginPassword }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        throw new Error(typeof result?.detail === "string" ? result.detail : "Sign-in failed. Please try again.");
+      }
+      setLoginPassword("");
+      setAuthStatus("authenticated");
+    } catch (loginRequestError) {
+      setLoginError(loginRequestError.message || "Could not reach the sign-in service.");
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function signOut() {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Could not sign out. Please try again.");
+      setBooks([]);
+      setAuthStatus("unauthenticated");
+      setLoginError("");
+    } catch (logoutError) {
+      setError(logoutError.message);
+    }
+  }
+
   async function saveBook(bookData, bookId = null) {
-    const response = await fetch(bookId ? `${API_URL}/api/books/${bookId}` : `${API_URL}/api/books`, {
+    const response = await apiFetch(bookId ? `${API_URL}/api/books/${bookId}` : `${API_URL}/api/books`, {
       method: bookId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(bookData),
@@ -666,7 +782,7 @@ export default function App() {
   async function deleteBook(book) {
     if (!window.confirm(`Remove “${book.title}” from your library?`)) return;
     try {
-      const response = await fetch(`${API_URL}/api/books/${book.id}`, { method: "DELETE" });
+      const response = await apiFetch(`${API_URL}/api/books/${book.id}`, { method: "DELETE" });
       if (!response.ok) throw new Error("The book could not be deleted. Please try again.");
       await loadBooks();
     } catch (deleteError) {
@@ -676,7 +792,7 @@ export default function App() {
 
   async function toggleFavorite(book) {
     try {
-      const response = await fetch(`${API_URL}/api/books/${book.id}/favorite`, { method: "PATCH" });
+      const response = await apiFetch(`${API_URL}/api/books/${book.id}/favorite`, { method: "PATCH" });
       if (!response.ok) throw new Error("Could not update favourites.");
       const updatedBook = await response.json();
       setBooks((current) => current.map((item) => item.id === book.id ? updatedBook : item));
@@ -694,7 +810,7 @@ export default function App() {
   }
 
   async function saveProgress(book, pagesRead) {
-    const response = await fetch(`${API_URL}/api/books/${book.id}/progress?pages_read=${pagesRead}`, { method: "PATCH" });
+    const response = await apiFetch(`${API_URL}/api/books/${book.id}/progress?pages_read=${pagesRead}`, { method: "PATCH" });
     if (!response.ok) {
       const result = await response.json().catch(() => null);
       throw new Error(typeof result?.detail === "string" ? result.detail : "Could not update reading progress.");
@@ -713,6 +829,15 @@ export default function App() {
   }
 
   const activeNav = NAV_ITEMS.find((item) => item.id === page);
+  if (authStatus === "checking") {
+    return <main className={`auth-page${darkMode ? " dark-theme" : ""}`}><p role="status">Connecting to your reading corner...</p></main>;
+  }
+  if (authStatus === "error") {
+    return <main className={`auth-page${darkMode ? " dark-theme" : ""}`}><section className="auth-card"><div className="auth-brand"><span className="brand-icon"><BrandMark /></span><span className="brand-word">Book<span className="brand-light">Loom</span></span></div><h1>Your library is taking a moment.</h1><p role="alert">BookLoom could not reach its sign-in service. Check the connection and try again.</p><button className="primary-button" onClick={checkSession} type="button">Try again</button></section></main>;
+  }
+  if (authStatus === "unauthenticated") {
+    return <LoginScreen darkMode={darkMode} error={loginError} loading={loginLoading} onSubmit={signIn} password={loginPassword} setPassword={setLoginPassword} />;
+  }
   return (
     <div className={`app-shell${darkMode ? " dark-theme" : ""}`}>
       <aside className="sidebar">
@@ -725,7 +850,7 @@ export default function App() {
         <button className="sidebar-profile" onClick={() => navigate("profile")} type="button"><span className="profile-avatar small-avatar">{(profile.name || "R").trim().charAt(0).toUpperCase()}</span><span><strong>{profile.name || "Reader"}</strong><small>Personal library</small></span><Icon name="settings" size={16} /></button>
       </aside>
       <main className="main-content">
-        <header className="topbar"><button aria-label="BookLoom home" className="mobile-brand" onClick={() => navigate("dashboard")} type="button"><span className="brand-icon"><BrandMark /></span><span>Book<span className="brand-light">Loom</span></span></button><span className="breadcrumb">Your space <span>/</span> <strong>{activeNav?.label}</strong></span><button className="topbar-add" onClick={() => navigate("add")} type="button"><Icon name="plus" size={17} /> Add a book</button></header>
+        <header className="topbar"><button aria-label="BookLoom home" className="mobile-brand" onClick={() => navigate("dashboard")} type="button"><span className="brand-icon"><BrandMark /></span><span>Book<span className="brand-light">Loom</span></span></button><span className="breadcrumb">Your space <span>/</span> <strong>{activeNav?.label}</strong></span><button className="topbar-add" onClick={() => navigate("add")} type="button"><Icon name="plus" size={17} /> Add a book</button><button aria-label="Sign out" className="topbar-signout" onClick={signOut} title="Sign out" type="button"><Icon name="logout" size={17} /><span>Sign out</span></button></header>
         <div className="page-content">
           {error && <div className="error-banner" role="alert"><span>{error}</span><button className="text-button" onClick={loadBooks} type="button">Try again</button></div>}
           {page === "dashboard" && <Dashboard books={sortedBooks} onDelete={deleteBook} onEdit={setEditBook} onFavorite={toggleFavorite} onNavigate={navigate} onProgress={setProgressBook} onStatusChange={changeStatus} />}

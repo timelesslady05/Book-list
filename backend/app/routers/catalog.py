@@ -5,10 +5,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/catalog/books", tags=["Book catalogue"])
+from app.routers.auth import require_authenticated
+
+router = APIRouter(
+    prefix="/api/catalog/books",
+    tags=["Book catalogue"],
+    dependencies=[Depends(require_authenticated)],
+)
 OPEN_LIBRARY = "https://openlibrary.org"
 USER_AGENT = "BookLoom/1.0 (book cover and description lookup)"
 WORK_ID_PATTERN = re.compile(r"^OL\d+W$")

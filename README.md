@@ -10,6 +10,7 @@ BookLoom is a personal book library built with **React** (the frontend), **FastA
 - **Favourites:** a shelf of books you have marked as favourites.
 - **Reading List:** group books as want to read, currently reading, or completed; update page progress.
 - **Profile & Settings:** save a display name, email, yearly reading goal, and light/dark theme in this browser.
+- **Single-owner sign-in:** the Render deployment protects book and catalogue API routes with a shared owner password; local development is open by default.
 - **Book details lookup:** after entering a title and author, look for an exact match in Open Library and fill in the available cover, description, genre, publication year, and page count. If several editions match, select the correct one.
 - Edit and delete books, with API-side input validation.
 
@@ -26,6 +27,7 @@ Book list/
 │   │   ├── schemas.py        # Validates incoming and outgoing API data.
 │   │   └── routers/
 │   │       ├── __init__.py
+│   │       ├── auth.py       # Single-owner sign-in and signed session cookie.
 │   │       ├── books.py      # Book, favourite, filter, and progress endpoints.
 │   │       └── catalog.py    # Exact title/author lookup from Open Library.
 │   ├── .env.example          # Template for local database settings.
@@ -91,6 +93,8 @@ python -m uvicorn app.main:app --reload --port 8001
 
 If PowerShell prevents activation, you can run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` in that terminal and activate again. Keep the backend terminal open. Visit [http://localhost:8001/docs](http://localhost:8001/docs) to try the API.
 
+Local development has sign-in disabled by default. To test it locally, set `BOOKLOOM_AUTH_ENABLED=true` in `backend/.env`, choose a password of at least 12 characters for `BOOKLOOM_PASSWORD`, and set `SESSION_SECRET` to a random value of at least 32 characters. Keep `.env` private.
+
 ## 3. Install and run the frontend
 
 Open a **second** PowerShell window:
@@ -108,13 +112,14 @@ Open [http://localhost:5174](http://localhost:5174). Keep both the backend and f
 
 The root `render.yaml` is a Render Blueprint that creates three services: the FastAPI backend, a PostgreSQL database, and the React static site. It uses Render's **Free** plans to avoid automatic charges. Free web services can take about a minute to wake after inactivity, and a free Render PostgreSQL database expires after 30 days. Upgrade the database before that deadline if you need to keep your data.
 
-> **Privacy warning:** This project does not have user accounts or authentication. Anyone who can reach the deployed API can read, add, edit, or delete books. Use it only with non-sensitive demo data unless authentication and authorization have been added.
+> **Privacy:** The deployed API requires one owner password. Anyone you share it with can access the same library. Choose a strong, unique password and do not use this app for sensitive information. This is a single shared library, not separate accounts.
 
 1. Make sure the project is pushed to the GitHub repository connected to Render. Do not commit `backend/.env` or `frontend/.env`; they contain local settings.
 2. Sign in at [dashboard.render.com](https://dashboard.render.com), choose **New → Blueprint**, and connect the BookLoom GitHub repository.
-3. Select the branch you want to deploy, review the three services and their Free plans, then apply the Blueprint.
-4. Wait for the database and both services to finish deploying. Open `https://bookloom-api.onrender.com/health`; it should return `{"status":"ok"}`. Then visit `https://bookloom-frontend.onrender.com`.
-5. If Render assigns different `onrender.com` names because those names are already taken, update `VITE_API_URL` on the static site to the API's actual URL and `FRONTEND_ORIGIN` on the API to the static site's actual URL, then redeploy both.
+3. Select the branch you want to deploy. When Render asks for `BOOKLOOM_PASSWORD`, enter a strong password of at least 12 characters. Render generates the session-signing secret automatically.
+4. Review the three services and their Free plans, then apply the Blueprint.
+5. Wait for the database and both services to finish deploying. Open `https://bookloom-api.onrender.com/health`; it should return `{"status":"ok"}`. Then visit `https://bookloom-frontend.onrender.com` and sign in with the password you entered.
+6. If Render assigns different `onrender.com` names because those names are already taken, update `VITE_API_URL` on the static site to the API's actual URL and `FRONTEND_ORIGIN` on the API to the static site's actual URL, then redeploy both.
 
 The API's `DATABASE_URL` is linked to the hosted database automatically. Do not paste the local PostgreSQL password into Render; it is unrelated to the hosted database credentials.
 
@@ -131,6 +136,9 @@ The API's `DATABASE_URL` is linked to the hosted database automatically. Do not 
 | `PATCH` | `/api/books/{id}/progress?pages_read=25` | Save reading progress and update reading status. |
 | `GET` | `/api/catalog/books/lookup?title=...&author=...` | Search public catalogue records with exact title/author matching. |
 | `GET` | `/api/catalog/books/lookup/work?work_id=OL...W` | Fetch the selected catalogue work's description and cover. |
+| `GET` | `/api/auth/session` | Check whether the browser is signed in. |
+| `POST` | `/api/auth/login` | Sign in with the shared owner password. |
+| `POST` | `/api/auth/logout` | Sign out and clear the session cookie. |
 | `GET` | `/health` | Check whether the API is responding. |
 
 Ratings are numbers from **1 to 5**. The summary and genre are required; cover, review, publication year, and page count are optional. If a total page count is entered, pages read cannot exceed it.
@@ -142,4 +150,4 @@ Ratings are numbers from **1 to 5**. The summary and genre are required; cover, 
 - **Book lookup is unavailable:** Check your internet connection and try again. Catalogue lookup is optional; book details can still be entered manually.
 - **Port already in use:** Stop the other program using that port, or configure a different port and update the frontend API URL/CORS settings to match.
 
-This is a local learning project. Profile settings are not accounts. Before deploying it publicly, add authentication and authorization, stronger production configuration, tested database migrations such as Alembic, automated tests, and an HTTPS deployment setup.
+Profile settings are stored in the browser and are not part of the shared library account. The hosted Blueprint enables HTTPS-only session cookies and requires authentication for book and catalogue API routes. Free Render services are intended for learning and demos, not production workloads.

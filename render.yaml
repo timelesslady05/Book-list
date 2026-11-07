@@ -24,6 +24,14 @@ services:
           property: connectionString
       - key: FRONTEND_ORIGIN
         value: https://bookloom-frontend.onrender.com
+      - key: BOOKLOOM_AUTH_ENABLED
+        value: "true"
+      - key: BOOKLOOM_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
 
   - type: web
     name: bookloom-frontend

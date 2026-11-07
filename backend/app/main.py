@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, add_new_book_columns, engine
+from app.routers.auth import router as auth_router
 from app.models import Book
 from app.routers.books import router as books_router
 from app.routers.catalog import router as catalog_router
@@ -36,6 +37,7 @@ app.add_middleware(
 Base.metadata.create_all(bind=engine)
 add_new_book_columns()
 
+app.include_router(auth_router)
 app.include_router(books_router)
 app.include_router(catalog_router)
 
