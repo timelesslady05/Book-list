@@ -104,6 +104,20 @@ npm run dev -- --port 5174
 
 Open [http://localhost:5174](http://localhost:5174). Keep both the backend and frontend terminals running while using the app. These instructions use ports 8001 and 5174 to avoid interfering with other development servers that may already be using the default ports.
 
+## 4. Deploy to Render
+
+The root `render.yaml` is a Render Blueprint that creates three services: the FastAPI backend, a PostgreSQL database, and the React static site. It uses Render's **Free** plans to avoid automatic charges. Free web services can take about a minute to wake after inactivity, and a free Render PostgreSQL database expires after 30 days. Upgrade the database before that deadline if you need to keep your data.
+
+> **Privacy warning:** This project does not have user accounts or authentication. Anyone who can reach the deployed API can read, add, edit, or delete books. Use it only with non-sensitive demo data unless authentication and authorization have been added.
+
+1. Make sure the project is pushed to the GitHub repository connected to Render. Do not commit `backend/.env` or `frontend/.env`; they contain local settings.
+2. Sign in at [dashboard.render.com](https://dashboard.render.com), choose **New → Blueprint**, and connect the BookLoom GitHub repository.
+3. Select the branch you want to deploy, review the three services and their Free plans, then apply the Blueprint.
+4. Wait for the database and both services to finish deploying. Open `https://bookloom-api.onrender.com/health`; it should return `{"status":"ok"}`. Then visit `https://bookloom-frontend.onrender.com`.
+5. If Render assigns different `onrender.com` names because those names are already taken, update `VITE_API_URL` on the static site to the API's actual URL and `FRONTEND_ORIGIN` on the API to the static site's actual URL, then redeploy both.
+
+The API's `DATABASE_URL` is linked to the hosted database automatically. Do not paste the local PostgreSQL password into Render; it is unrelated to the hosted database credentials.
+
 ## API endpoints
 
 | Method | Address | Purpose |

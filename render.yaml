@@ -1,0 +1,37 @@
+databases:
+  - name: bookloom-db
+    databaseName: booklist
+    user: bookloom
+    plan: free
+    region: oregon
+
+services:
+  - type: web
+    name: bookloom-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bookloom-db
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        value: https://bookloom-frontend.onrender.com
+
+  - type: static
+    name: bookloom-frontend
+    runtime: static
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://bookloom-api.onrender.com
