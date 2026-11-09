@@ -118,7 +118,7 @@ The root `render.yaml` is a Render Blueprint that creates three services: the Fa
 2. Sign in at [dashboard.render.com](https://dashboard.render.com), choose **New → Blueprint**, and connect the BookLoom GitHub repository.
 3. Select the branch you want to deploy. Render generates the session-signing secret automatically; visitors create their own accounts on the website.
 4. Review the three services and their Free plans, then apply the Blueprint.
-5. Wait for the database and both services to finish deploying. Open `https://bookloom-api.onrender.com/health`; it should return `{"status":"ok"}`. Then visit `https://bookloom-frontend.onrender.com` and create an account.
+5. Wait for the database and both services to finish deploying. Open the API service's `/health` page; it should return `{"status":"ok"}`. Then visit your static site's `onrender.com` address and create an account.
 6. If Render assigns different `onrender.com` names because those names are already taken, update `VITE_API_URL` on the static site to the API's actual URL and `FRONTEND_ORIGIN` on the API to the static site's actual URL, then redeploy both.
 
 The API's `DATABASE_URL` is linked to the hosted database automatically. Do not paste the local PostgreSQL password into Render; it is unrelated to the hosted database credentials.

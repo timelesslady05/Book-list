@@ -39,4 +39,4 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://book-list-b3um.onrender.com
+        value: https://book-list-1-th0z.onrender.com
