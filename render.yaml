@@ -25,7 +25,7 @@ services:
           name: bookloom-db
           property: connectionString
       - key: FRONTEND_ORIGIN
-        value: https://bookloom-frontend.onrender.com
+        value: https://book-list-b3um.onrender.com
       - key: SESSION_SECRET
         generateValue: true
       - key: COOKIE_SECURE
@@ -39,4 +39,4 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://bookloom-api.onrender.com
+        value: https://book-list-b3um.onrender.com
