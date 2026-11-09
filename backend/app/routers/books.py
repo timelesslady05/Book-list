@@ -5,15 +5,20 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Book
-from app.routers.auth import require_authenticated
+from app.models import Book, User
+from app.routers.auth import get_current_user
 from app.schemas import BookCreate, BookResponse, BookUpdate
 
-router = APIRouter(
-    prefix="/api/books",
-    tags=["Books"],
-    dependencies=[Depends(require_authenticated)],
-)
+router = APIRouter(prefix="/api/books", tags=["Books"])
+
+
+def _get_owned_book(db: Session, book_id: int, user_id: int) -> Book:
+    book = db.scalar(
+        select(Book).where(Book.id == book_id, Book.user_id == user_id)
+    )
+    if book is None:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    return book
 
 
 @router.get("", response_model=list[BookResponse])
@@ -25,10 +30,15 @@ def list_books(
     ),
     min_rating: float | None = Query(default=None, ge=1, le=5),
     favorites_only: bool = False,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[Book]:
     """Return books matching the supplied search and filter options."""
-    statement = select(Book).order_by(Book.created_at.desc(), Book.id.desc())
+    statement = (
+        select(Book)
+        .where(Book.user_id == current_user.id)
+        .order_by(Book.created_at.desc(), Book.id.desc())
+    )
     if search and search.strip():
         term = f"%{search.strip()}%"
         statement = statement.where(
@@ -51,8 +61,12 @@ def list_books(
 
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
-def create_book(book_data: BookCreate, db: Session = Depends(get_db)) -> Book:
-    book = Book(**book_data.model_dump())
+def create_book(
+    book_data: BookCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Book:
+    book = Book(user_id=current_user.id, **book_data.model_dump())
     if book.status == "completed":
         book.pages_read = book.total_pages or book.pages_read
         book.completed_at = datetime.now(timezone.utc)
@@ -63,20 +77,22 @@ def create_book(book_data: BookCreate, db: Session = Depends(get_db)) -> Book:
 
 
 @router.get("/{book_id}", response_model=BookResponse)
-def get_book(book_id: int, db: Session = Depends(get_db)) -> Book:
-    book = db.get(Book, book_id)
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found.")
-    return book
+def get_book(
+    book_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Book:
+    return _get_owned_book(db, book_id, current_user.id)
 
 
 @router.put("/{book_id}", response_model=BookResponse)
 def update_book(
-    book_id: int, book_data: BookUpdate, db: Session = Depends(get_db)
+    book_id: int,
+    book_data: BookUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Book:
-    book = db.get(Book, book_id)
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found.")
+    book = _get_owned_book(db, book_id, current_user.id)
     previous_status = book.status
     for field, value in book_data.model_dump().items():
         setattr(book, field, value)
@@ -92,10 +108,12 @@ def update_book(
 
 
 @router.patch("/{book_id}/favorite", response_model=BookResponse)
-def toggle_favorite(book_id: int, db: Session = Depends(get_db)) -> Book:
-    book = db.get(Book, book_id)
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found.")
+def toggle_favorite(
+    book_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Book:
+    book = _get_owned_book(db, book_id, current_user.id)
     book.is_favorite = not book.is_favorite
     db.commit()
     db.refresh(book)
@@ -106,11 +124,10 @@ def toggle_favorite(book_id: int, db: Session = Depends(get_db)) -> Book:
 def update_progress(
     book_id: int,
     pages_read: int = Query(ge=0, le=100000),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Book:
-    book = db.get(Book, book_id)
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found.")
+    book = _get_owned_book(db, book_id, current_user.id)
     if book.total_pages is None:
         raise HTTPException(
             status_code=422,
@@ -136,10 +153,12 @@ def update_progress(
 
 
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_book(book_id: int, db: Session = Depends(get_db)) -> Response:
-    book = db.get(Book, book_id)
-    if book is None:
-        raise HTTPException(status_code=404, detail="Book not found.")
+def delete_book(
+    book_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    book = _get_owned_book(db, book_id, current_user.id)
     db.delete(book)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

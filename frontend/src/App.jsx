@@ -51,7 +51,7 @@ const EMPTY_BOOK = {
   review: "",
   is_favorite: false,
 };
-const DEFAULT_PROFILE = { name: "Reader", email: "", yearlyGoal: 24 };
+const DEFAULT_PROFILE = { name: "Reader", yearlyGoal: 24 };
 
 function Icon({ name, size = 20 }) {
   const paths = {
@@ -111,7 +111,17 @@ function BrandMark() {
   );
 }
 
-function LoginScreen({ password, setPassword, onSubmit, error, loading, darkMode }) {
+function LoginScreen({
+  account,
+  setAccount,
+  mode,
+  setMode,
+  onSubmit,
+  error,
+  loading,
+  darkMode,
+}) {
+  const isRegistering = mode === "register";
   return (
     <main className={`auth-page${darkMode ? " dark-theme" : ""}`}>
       <section aria-labelledby="login-title" className="auth-card">
@@ -120,27 +130,58 @@ function LoginScreen({ password, setPassword, onSubmit, error, loading, darkMode
           <span className="brand-word">Book<span className="brand-light">Loom</span></span>
         </div>
         <span className="eyebrow"><span className="eyebrow-line" /> YOUR READING CORNER</span>
-        <h1 id="login-title">A little space for your stories.</h1>
-        <p>Enter your owner password to open your private library.</p>
+        <h1 id="login-title">{isRegistering ? "Start your own reading corner." : "Welcome back to your stories."}</h1>
+        <p>{isRegistering ? "Create an account to begin your private bookshelf." : "Sign in to pick up where you left off."}</p>
         <form className="auth-form" onSubmit={onSubmit}>
-          <label htmlFor="owner-password">Owner password</label>
+          {isRegistering && (
+            <>
+              <label htmlFor="account-name">Your name</label>
+              <input
+                autoComplete="name"
+                id="account-name"
+                maxLength={80}
+                onChange={(event) => setAccount((current) => ({ ...current, display_name: event.target.value }))}
+                required
+                value={account.display_name}
+              />
+            </>
+          )}
+          <label htmlFor="account-email">Email address</label>
           <input
-            autoComplete="current-password"
-            autoFocus
-            id="owner-password"
+            autoComplete="email"
+            autoFocus={!isRegistering}
+            id="account-email"
+            maxLength={254}
+            onChange={(event) => setAccount((current) => ({ ...current, email: event.target.value }))}
+            required
+            type="email"
+            value={account.email}
+          />
+          <label htmlFor="account-password">Password</label>
+          <input
+            autoComplete={isRegistering ? "new-password" : "current-password"}
+            id="account-password"
             maxLength={128}
             minLength={12}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => setAccount((current) => ({ ...current, password: event.target.value }))}
             required
             type="password"
-            value={password}
+            value={account.password}
           />
+          {isRegistering && <small className="auth-password-hint">Use at least 12 characters.</small>}
           {error && <p className="form-error" role="alert">{error}</p>}
           <button className="primary-button" disabled={loading} type="submit">
-            {loading ? "Signing in..." : "Open my library"}
+            {loading ? "Please wait..." : isRegistering ? "Create my account" : "Sign in"}
           </button>
         </form>
-        <span className="auth-footnote">One shared password protects this personal library.</span>
+        <span className="auth-switch">
+          {isRegistering ? "Already have an account?" : "New to BookLoom?"}
+          {" "}
+          <button onClick={() => { setMode(isRegistering ? "login" : "register"); }} type="button">
+            {isRegistering ? "Sign in" : "Create an account"}
+          </button>
+        </span>
+        <span className="auth-footnote">Your bookshelf is private to your account.</span>
       </section>
     </main>
   );
@@ -626,11 +667,17 @@ function ReadingList({ books, onNavigate, onEdit, onDelete, onFavorite, onStatus
   );
 }
 
-function ProfileSettings({ profile, setProfile, darkMode, setDarkMode, completed, onSave }) {
+function ProfileSettings({
+  profile,
+  setProfile,
+  darkMode,
+  setDarkMode,
+  completed,
+  accountEmail,
+}) {
   const [saved, setSaved] = useState(false);
   function submit(event) {
     event.preventDefault();
-    onSave();
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2200);
   }
@@ -638,22 +685,24 @@ function ProfileSettings({ profile, setProfile, darkMode, setDarkMode, completed
     <section className="listing-page">
       <PageHeading description="Make your reading corner feel like yours." eyebrow="YOUR ACCOUNT" title="Profile & settings" />
       <form className="settings-card" onSubmit={submit}>
-        <div className="settings-section-title"><div className="profile-avatar">{(profile.name || "R").trim().charAt(0).toUpperCase()}</div><div><h2>Your profile</h2><p>Your details are saved in this browser.</p></div></div>
-        <div className="settings-fields"><label>Display name<input maxLength={80} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} value={profile.name} /></label><label>Email address <span className="optional-label">optional</span><input maxLength={200} onChange={(event) => setProfile((current) => ({ ...current, email: event.target.value }))} placeholder="you@example.com" type="email" value={profile.email} /></label><label>Yearly reading goal<input max="365" min="1" onChange={(event) => setProfile((current) => ({ ...current, yearlyGoal: Number(event.target.value) }))} type="number" value={profile.yearlyGoal} /></label></div>
+        <div className="settings-section-title"><div className="profile-avatar">{(profile.name || "R").trim().charAt(0).toUpperCase()}</div><div><h2>Your profile</h2><p>Your display name and preferences are saved in this browser for this account.</p></div></div>
+        <div className="settings-fields"><label>Display name<input maxLength={80} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} value={profile.name} /></label><label>Account email<input readOnly type="email" value={accountEmail} /></label><label>Yearly reading goal<input max="365" min="1" onChange={(event) => setProfile((current) => ({ ...current, yearlyGoal: Number(event.target.value) }))} type="number" value={profile.yearlyGoal} /></label></div>
         <div className="settings-section-title settings-preferences"><span className="settings-icon"><Icon name={darkMode ? "moon" : "sun"} size={20} /></span><div><h2>Appearance</h2><p>Choose the look that feels right for you.</p></div></div>
         <label className="setting-toggle"><span><strong>Dark mode</strong><small>Use a darker palette across your library.</small></span><input checked={darkMode} onChange={(event) => setDarkMode(event.target.checked)} type="checkbox" /><span className="toggle-track" /></label>
         <div className="goal-progress"><div><span>THIS YEAR’S READING GOAL</span><strong>{completed.length} / {profile.yearlyGoal || 24} books</strong></div><div className="progress-track progress-track-large"><span style={{ width: `${Math.min(100, completed.length / (profile.yearlyGoal || 24) * 100)}%` }} /></div></div>
         <div className="settings-save"><span aria-live="polite">{saved ? "Preferences saved." : "Profile preferences stay on this device."}</span><button className="primary-button" type="submit">Save preferences</button></div>
       </form>
-      <p className="settings-note">This is one shared personal library protected by an owner password. Profile preferences stay in this browser.</p>
+      <p className="settings-note">Your books are private to your account. Profile preferences stay in this browser.</p>
     </section>
   );
 }
 
 export default function App() {
   const [books, setBooks] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [authStatus, setAuthStatus] = useState("checking");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [account, setAccount] = useState({ display_name: "", email: "", password: "" });
+  const [authMode, setAuthMode] = useState("login");
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [page, setPage] = useState("dashboard");
@@ -664,14 +713,21 @@ export default function App() {
   const [progressBook, setProgressBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("booknook-dark") === "true");
-  const [profile, setProfile] = useState(() => {
+  const [darkMode, setDarkMode] = useState(false);
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+
+  function setSignedInUser(user) {
+    setCurrentUser(user);
+    setDarkMode(localStorage.getItem(`bookloom-dark-${user.id}`) === "true");
     try {
-      return { ...DEFAULT_PROFILE, ...JSON.parse(localStorage.getItem("booknook-profile") || "{}") };
+      const savedProfile = JSON.parse(
+        localStorage.getItem(`bookloom-profile-${user.id}`) || "{}",
+      );
+      setProfile({ ...DEFAULT_PROFILE, name: user.display_name, ...savedProfile });
     } catch {
-      return DEFAULT_PROFILE;
+      setProfile({ ...DEFAULT_PROFILE, name: user.display_name });
     }
-  });
+  }
 
   const checkSession = useCallback(async () => {
     setAuthStatus("checking");
@@ -681,7 +737,13 @@ export default function App() {
       });
       if (!response.ok) throw new Error("The sign-in service could not be reached.");
       const session = await response.json();
-      setAuthStatus(session.authenticated ? "authenticated" : "unauthenticated");
+      if (session.authenticated && session.user) {
+        setSignedInUser(session.user);
+        setAuthStatus("authenticated");
+      } else {
+        setCurrentUser(null);
+        setAuthStatus("unauthenticated");
+      }
     } catch {
       setAuthStatus("error");
     }
@@ -689,6 +751,7 @@ export default function App() {
 
   useEffect(() => {
     function handleAuthenticationRequired() {
+      setCurrentUser(null);
       setAuthStatus("unauthenticated");
       setBooks([]);
       setError("");
@@ -716,10 +779,16 @@ export default function App() {
     if (authStatus === "authenticated") loadBooks();
   }, [authStatus, loadBooks]);
   useEffect(() => {
-    localStorage.setItem("booknook-dark", String(darkMode));
+    if (currentUser) {
+      localStorage.setItem(`bookloom-dark-${currentUser.id}`, String(darkMode));
+    }
     document.documentElement.dataset.theme = darkMode ? "dark" : "light";
-  }, [darkMode]);
-  useEffect(() => { localStorage.setItem("booknook-profile", JSON.stringify(profile)); }, [profile]);
+  }, [currentUser, darkMode]);
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(`bookloom-profile-${currentUser.id}`, JSON.stringify(profile));
+    }
+  }, [currentUser, profile]);
 
   const sortedBooks = useMemo(() => [...books].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)), [books]);
   const favorites = sortedBooks.filter((book) => book.is_favorite);
@@ -730,17 +799,27 @@ export default function App() {
     setLoginLoading(true);
     setLoginError("");
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${API_URL}/api/auth/${authMode === "register" ? "register" : "login"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ password: loginPassword }),
+        body: JSON.stringify(
+          authMode === "register"
+            ? account
+            : { email: account.email, password: account.password },
+        ),
       });
       if (!response.ok) {
         const result = await response.json().catch(() => null);
-        throw new Error(typeof result?.detail === "string" ? result.detail : "Sign-in failed. Please try again.");
+        const detail = typeof result?.detail === "string" ? result.detail : null;
+        const validationDetail = Array.isArray(result?.detail)
+          ? result.detail.map((issue) => issue.msg).join(" ")
+          : null;
+        throw new Error(detail || validationDetail || "Account request failed. Please try again.");
       }
-      setLoginPassword("");
+      const user = await response.json();
+      setSignedInUser(user);
+      setAccount({ display_name: "", email: "", password: "" });
       setAuthStatus("authenticated");
     } catch (loginRequestError) {
       setLoginError(loginRequestError.message || "Could not reach the sign-in service.");
@@ -757,7 +836,10 @@ export default function App() {
       });
       if (!response.ok) throw new Error("Could not sign out. Please try again.");
       setBooks([]);
+      setCurrentUser(null);
       setAuthStatus("unauthenticated");
+      setAuthMode("login");
+      setAccount({ display_name: "", email: "", password: "" });
       setLoginError("");
     } catch (logoutError) {
       setError(logoutError.message);
@@ -836,7 +918,7 @@ export default function App() {
     return <main className={`auth-page${darkMode ? " dark-theme" : ""}`}><section className="auth-card"><div className="auth-brand"><span className="brand-icon"><BrandMark /></span><span className="brand-word">Book<span className="brand-light">Loom</span></span></div><h1>Your library is taking a moment.</h1><p role="alert">BookLoom could not reach its sign-in service. Check the connection and try again.</p><button className="primary-button" onClick={checkSession} type="button">Try again</button></section></main>;
   }
   if (authStatus === "unauthenticated") {
-    return <LoginScreen darkMode={darkMode} error={loginError} loading={loginLoading} onSubmit={signIn} password={loginPassword} setPassword={setLoginPassword} />;
+    return <LoginScreen account={account} darkMode={darkMode} error={loginError} loading={loginLoading} mode={authMode} onSubmit={signIn} setAccount={setAccount} setMode={setAuthMode} />;
   }
   return (
     <div className={`app-shell${darkMode ? " dark-theme" : ""}`}>
@@ -858,7 +940,7 @@ export default function App() {
           {page === "add" && <section className="listing-page"><PageHeading description="Add the details you want to remember. You can update them any time." eyebrow="A NEW CHAPTER" title="Add a book" /><div className="settings-card add-book-card"><BookForm onSave={(bookData) => saveBook(bookData)} pageMode /></div></section>}
           {page === "favorites" && renderBookshelf({ description: "The stories and authors you want to keep closest.", eyebrow: "THE ONES YOU LOVE", favoritesOnly: true, title: "Favourites" })}
           {page === "reading" && <ReadingList books={sortedBooks} onDelete={deleteBook} onEdit={setEditBook} onFavorite={toggleFavorite} onNavigate={navigate} onProgress={setProgressBook} onStatusChange={changeStatus} />}
-          {page === "profile" && <ProfileSettings completed={completed} darkMode={darkMode} onSave={() => localStorage.setItem("booknook-profile", JSON.stringify(profile))} profile={profile} setDarkMode={setDarkMode} setProfile={setProfile} />}
+          {page === "profile" && <ProfileSettings accountEmail={currentUser.email} completed={completed} darkMode={darkMode} profile={profile} setDarkMode={setDarkMode} setProfile={setProfile} />}
           <footer className="page-footer">Made for the love of a good story <span>✳</span></footer>
         </div>
       </main>

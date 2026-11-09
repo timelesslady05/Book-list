@@ -8,12 +8,12 @@ from urllib.request import Request, urlopen
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.routers.auth import require_authenticated
+from app.routers.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/catalog/books",
     tags=["Book catalogue"],
-    dependencies=[Depends(require_authenticated)],
+    dependencies=[Depends(get_current_user)],
 )
 OPEN_LIBRARY = "https://openlibrary.org"
 USER_AGENT = "BookLoom/1.0 (book cover and description lookup)"

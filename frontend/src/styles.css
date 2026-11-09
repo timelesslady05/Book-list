@@ -290,12 +290,15 @@ h1, h2, h3, p { margin-top: 0; }
 .auth-card > h1 { color: #30342f; font-family: "Playfair Display", Georgia, serif; font-size: 34px; font-weight: 500; letter-spacing: -1px; line-height: 1.2; margin: 15px 0 10px; }
 .auth-card > p { color: #898b82; font-size: 13px; line-height: 1.7; margin-bottom: 24px; }
 .auth-form { display: grid; gap: 10px; }
-.auth-form > label { color: #65675e; font-size: 12px; font-weight: 600; }
+.auth-form > label { color: #65675e; font-size: 12px; font-weight: 600; margin-top: 3px; }
 .auth-form > input { background: #fffefa; border: 1px solid #deddd5; border-radius: 7px; color: #292b28; min-height: 44px; outline: none; padding: 10px 12px; }
 .auth-form > input:focus { border-color: #74856f; box-shadow: 0 0 0 3px rgba(116, 133, 111, .14); }
 .auth-form .primary-button { justify-content: center; margin-top: 8px; min-height: 44px; }
 .auth-form .primary-button:disabled { cursor: wait; opacity: .7; }
-.auth-footnote { color: #9a9b91; display: block; font-size: 11px; line-height: 1.6; margin-top: 24px; text-align: center; }
+.auth-password-hint { color: #898b82; font-size: 11px; margin-top: -3px; }
+.auth-switch { color: #777a70; display: block; font-size: 12px; margin-top: 22px; text-align: center; }
+.auth-switch button { background: transparent; border: 0; color: var(--green-dark); font-size: inherit; font-weight: 600; padding: 3px; }
+.auth-footnote { color: #9a9b91; display: block; font-size: 11px; line-height: 1.6; margin-top: 17px; text-align: center; }
 .auth-page.dark-theme { background: radial-gradient(ellipse at 78% 18%, rgba(104, 96, 68, .18), transparent 34%), #171a18; }
 .auth-page.dark-theme .auth-card { background: #222724; border-color: #343934; }
 .auth-page.dark-theme .auth-brand .brand-word, .auth-page.dark-theme .auth-card > h1 { color: #e7e5dc; }
@@ -303,6 +306,8 @@ h1, h2, h3, p { margin-top: 0; }
 .auth-page.dark-theme .auth-card > p, .auth-page.dark-theme .auth-footnote { color: #a6a99f; }
 .auth-page.dark-theme .auth-form > label { color: #c3c4ba; }
 .auth-page.dark-theme .auth-form > input { background: #1c211e; border-color: #3a403a; color: #e6e5dc; }
+.auth-page.dark-theme .auth-password-hint, .auth-page.dark-theme .auth-switch { color: #a6a99f; }
+.auth-page.dark-theme .auth-switch button { color: #bdcdb4; }
 .topbar-signout { align-items: center; background: transparent; border: 0; color: #777a70; display: inline-flex; font-size: 11px; gap: 7px; margin-left: 18px; padding: 8px 0; }
 .topbar-signout:hover { color: #405642; }
 .dark-theme .topbar-signout { color: #b2b4a9; }

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, add_new_book_columns, engine
 from app.routers.auth import router as auth_router
-from app.models import Book
+from app.models import Book, User
 from app.routers.books import router as books_router
 from app.routers.catalog import router as catalog_router
 
@@ -20,6 +20,8 @@ cors_origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
 ]
 frontend_origin = os.getenv("FRONTEND_ORIGIN")
 if frontend_origin:
@@ -33,8 +35,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Importing Book above registers its table before SQLAlchemy creates the schema.
-Base.metadata.create_all(bind=engine)
+# Importing the models above registers their tables before schema creation.
+Base.metadata.create_all(
+    bind=engine, tables=[User.__table__, Book.__table__]
+)
 add_new_book_columns()
 
 app.include_router(auth_router)

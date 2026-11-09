@@ -1,9 +1,23 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
+
+
+class User(Base):
+    """A BookLoom account with a private book collection."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class Book(Base):
@@ -12,6 +26,9 @@ class Book(Base):
     __tablename__ = "books"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     author: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
     rating: Mapped[float] = mapped_column(Float, nullable=False)
@@ -34,3 +51,6 @@ class Book(Base):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+
+Index("ix_books_user_id", Book.user_id)

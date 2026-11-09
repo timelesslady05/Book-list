@@ -2,7 +2,7 @@ import os
 from collections.abc import Generator
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import Index, create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 load_dotenv()
@@ -46,6 +46,8 @@ def add_new_book_columns() -> None:
             if column.name in existing_columns or column.primary_key:
                 continue
             column_type = column.type.compile(dialect=dialect)
+            if column.name == "user_id":
+                column_type += f" REFERENCES {quote('users')} ({quote('id')})"
             default = ""
             if column.name == "status":
                 default = " DEFAULT 'want_to_read'"
@@ -61,6 +63,8 @@ def add_new_book_columns() -> None:
                 )
             )
             existing_columns.add(column.name)
+
+    Index("ix_books_user_id", Book.user_id).create(bind=engine, checkfirst=True)
 
 
 def get_db() -> Generator[Session, None, None]:
